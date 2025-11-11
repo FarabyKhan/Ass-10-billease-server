@@ -28,22 +28,38 @@ async function run() {
 
     const db = client.db('billeaseDBUser')
     const billsCollection = db.collection('bills')
+    const userCollection = db.collection('user')
 
-    app.get('/bills', async(req ,res)=>{
- const result = await billsCollection.find().toArray()
+    app.post('/user', async (req, res) => {
+      const newUser = req.body;
+      const email = req.body.email;
+      const query = { email: email }
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        res.send({ message: 'User already exist ,do not need to insert again' })
+      }
+      else {
+        const result = await userCollection.insertOne(newUser)
+        res.send(result);
+      }
+
+    })
+
+    app.get('/bills', async (req, res) => {
+      const result = await billsCollection.find().toArray()
 
       res.send(result)
     })
 
-    app.get('/bills/:id', async(req , res)=>{
+    app.get('/bills/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await billsCollection.findOne(query)
       res.send(result);
     })
 
-    app.get('/latest-bills', async(req, res)=>{
-      const cursor = billsCollection.find().sort({date: -1}).limit(6)
+    app.get('/latest-bills', async (req, res) => {
+      const cursor = billsCollection.find().sort({ date: -1 }).limit(6)
       const result = await cursor.toArray();
       res.send(result)
 
@@ -67,9 +83,9 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('Server is running')
+  res.send('Server is running')
 })
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+  console.log(`Example app listening on port ${port}`)
 })
