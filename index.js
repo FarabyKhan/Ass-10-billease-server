@@ -29,6 +29,7 @@ async function run() {
     const db = client.db('billeaseDBUser')
     const billsCollection = db.collection('bills')
     const userCollection = db.collection('user')
+    const paymentsCollection = db.collection('payments')
 
     app.post('/user', async (req, res) => {
       const newUser = req.body;
@@ -46,10 +47,18 @@ async function run() {
     })
 
     app.get('/bills', async (req, res) => {
-      const result = await billsCollection.find().toArray()
+       const category = req.query.category;
+      let query ={};
 
+      if(category && category !== "All"){
+        query = {category: category};
+      }
+      
+      const result = await billsCollection.find(query).toArray()
       res.send(result)
     })
+
+    
 
     app.get('/bills/:id', async (req, res) => {
       const id = req.params.id;
@@ -65,11 +74,25 @@ async function run() {
 
     })
 
+    app.post('/payments',async(req, res)=>{
+      const payment = req.body;
 
+      const billData = await billsCollection.findOne({_id:new ObjectId(payment.billId)})
+      if(!billData)
+        return res.status(404).send({message:"Bill not found"})
 
+      const billDate = new Date(billData.date);
+      const present = new Date();
+      if(billDate.getMonth()  !== present.getMonth() || billDate.getFullYear() !== present.getFullYear()){
+        return res.status(400).send({message:"You can only pay current month bills "})
+      };
 
+      const result = await paymentsCollection.insertOne(payment);
+      res.send({message: "payment is successful", result})
+        
+    })
 
-
+    
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
