@@ -29,7 +29,7 @@ async function run() {
     const db = client.db('billeaseDBUser')
     const billsCollection = db.collection('bills')
     const userCollection = db.collection('user')
-    const paymentsCollection = db.collection('payments')
+    const myBillsCollection = db.collection('myBills')
 
     app.post('/user', async (req, res) => {
       const newUser = req.body;
@@ -74,22 +74,46 @@ async function run() {
 
     })
 
-    app.post('/payments',async(req, res)=>{
+    app.post('/myBills',async(req, res)=>{
       const payment = req.body;
 
       const billData = await billsCollection.findOne({_id:new ObjectId(payment.billId)})
       if(!billData)
         return res.status(404).send({message:"Bill not found"})
 
+      const existingPayment = await myBillsCollection.findOne({
+        email:payment.email,
+        billId: payment.billId
+      })
+
+      if(existingPayment){
+        return res.status(400).send({message:"You have already paid this bill "})
+      }
+
       const billDate = new Date(billData.date);
       const present = new Date();
-      if(billDate.getMonth()  !== present.getMonth() || billDate.getFullYear() !== present.getFullYear()){
+      if(billDate.getMonth()  !== present.getMonth() ||
+       billDate.getFullYear() !== present.getFullYear()){
+
         return res.status(400).send({message:"You can only pay current month bills "})
       };
 
-      const result = await paymentsCollection.insertOne(payment);
-      res.send({message: "payment is successful", result})
+      const result = await myBillsCollection.insertOne(payment);
+      res.send({message: "Payment is successful", result})
         
+    })
+
+    app.get('/myBills',async(req, res)=>{
+      const { email } = req.query
+
+      const query = {};
+      if(email){
+        query.email = email;
+      }
+
+      const cursor = myBillsCollection.find(query)
+      const result = await cursor.toArray();
+      res.send(result)
     })
 
     
