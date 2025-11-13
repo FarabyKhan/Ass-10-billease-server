@@ -116,6 +116,32 @@ async function run() {
       res.send(result)
     })
 
+    app.delete('/myBills/:id', async(req, res)=>{
+        const id = req.params.id;
+        const query ={_id: new ObjectId(id)}
+        const result = await myBillsCollection.deleteOne(query)
+        res.send(result)
+
+    })
+
+   app.put('/myBills/:id', async(req, res)=>{
+     const id = req.params.id;
+     const {email,...updateInfo } = req.body;
+
+        const filter ={_id: new ObjectId(id), email}
+        const updateBill ={
+          $set: {
+            amount:updateInfo.amount,
+            address: updateInfo.address,
+            phone: updateInfo.phone,
+            date: updateInfo.date,
+          },
+        };
+        const result = await myBillsCollection.updateOne(filter,updateBill)
+        res.send(result)
+
+   })
+
     
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
