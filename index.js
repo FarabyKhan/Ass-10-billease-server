@@ -2,11 +2,46 @@ const express = require('express')
 const cors = require('cors')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require("dotenv").config()
+const admin = require("firebase-admin");
 const app = express()
 const port = 3000
 
+
+const serviceAccount = require("./billease-clint-auth-firebase-admin-key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
 app.use(cors())
 app.use(express.json())
+
+
+
+const verifyFirebaseToken =async(req, res, next)=>{
+  console.log('in a verify middleware', req.headers.authorization);
+  if(!req.headers.authorization){
+    return res.status(401).send({message:'unauthorize access'})
+  }
+  const token = req.headers.authorization.split(' ')[1];
+
+  if(!token){
+    return res.status(401).send({message:'unauthorize access'})
+  }
+
+  try{
+  const userTokenInfo = await admin.auth().verifyIdToken(token)
+  req.token_email = userTokenInfo.email;
+  console.log('after token verification', userTokenInfo);
+  next();
+
+  }
+  catch{
+    return res.status(401).send({message:'unauthorize access'})
+  }
+
+}
 
 
 
@@ -60,7 +95,7 @@ async function run() {
 
     
 
-    app.get('/bills/:id', async (req, res) => {
+    app.get('/bills/:id',verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await billsCollection.findOne(query)
@@ -74,7 +109,25 @@ async function run() {
 
     })
 
+    app.get('/myBills',verifyFirebaseToken, async(req, res)=>{
+       console.log('headers',req); 
+      const  email  = req.query.email;
+      const query = {};
+      if(email){
+        if(email !== req.token_email){
+          return res.status(403).send({message:'forbidden access'})
+        }
+        query.email = email;
+      }
+
+      const cursor = myBillsCollection.find(query)
+      const result = await cursor.toArray();
+      res.send(result)
+    })
+
     app.post('/myBills',async(req, res)=>{
+     
+      
       const payment = req.body;
 
       const billData = await billsCollection.findOne({_id:new ObjectId(payment.billId)})
@@ -103,19 +156,7 @@ async function run() {
         
     })
 
-    app.get('/myBills',async(req, res)=>{
-      const { email } = req.query
-
-      const query = {};
-      if(email){
-        query.email = email;
-      }
-
-      const cursor = myBillsCollection.find(query)
-      const result = await cursor.toArray();
-      res.send(result)
-    })
-
+    
     app.delete('/myBills/:id', async(req, res)=>{
         const id = req.params.id;
         const query ={_id: new ObjectId(id)}
