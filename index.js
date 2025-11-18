@@ -125,10 +125,12 @@ async function run() {
       res.send(result)
     })
 
-    app.post('/myBills',async(req, res)=>{
+    app.post('/myBills',verifyFirebaseToken, async(req, res)=>{
      
       
       const payment = req.body;
+
+      payment.email= req.token_email;
 
       const billData = await billsCollection.findOne({_id:new ObjectId(payment.billId)})
       if(!billData)
@@ -157,9 +159,11 @@ async function run() {
     })
 
     
-    app.delete('/myBills/:id', async(req, res)=>{
+    app.delete('/myBills/:id', verifyFirebaseToken, async(req, res)=>{
         const id = req.params.id;
-        const query ={_id: new ObjectId(id)}
+        const email = req.token_email;
+
+        const query ={_id: new ObjectId(id), email}
         const result = await myBillsCollection.deleteOne(query)
         res.send(result)
 
@@ -167,11 +171,8 @@ async function run() {
 
    app.put('/myBills/:id', verifyFirebaseToken, async(req, res)=>{
      const id = req.params.id;
-     const {email,...updateInfo } = req.body;
-
-     if(email !== req.token_email){
-      return res.status(403).send({message:"Forbidden Access"})
-     }
+     const email = req.token_email;
+     const updateInfo = req.body;
 
         const filter ={_id: new ObjectId(id), email}
         const updateBill ={
