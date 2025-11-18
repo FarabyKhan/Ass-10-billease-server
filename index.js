@@ -165,9 +165,13 @@ async function run() {
 
     })
 
-   app.put('/myBills/:id', async(req, res)=>{
+   app.put('/myBills/:id', verifyFirebaseToken, async(req, res)=>{
      const id = req.params.id;
      const {email,...updateInfo } = req.body;
+
+     if(email !== req.token_email){
+      return res.status(403).send({message:"Forbidden Access"})
+     }
 
         const filter ={_id: new ObjectId(id), email}
         const updateBill ={
