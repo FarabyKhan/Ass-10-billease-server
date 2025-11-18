@@ -1,3 +1,4 @@
 node_modules
 .env
 billease-clint-auth-firebase-admin-key.json
+.vercel
